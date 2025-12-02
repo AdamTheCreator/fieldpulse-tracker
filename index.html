@@ -27,6 +27,7 @@
 
     <script type="text/babel">
         // *** CONFIGURATION ***
+        // I've kept your URL here, but please ensure it is accessible to "Anyone"
         const SCRIPT_URL = "https://script.google.com/a/macros/github.com/s/AKfycby8dfirR8P1ptXvXELbrv6Ygum3J5kE5lGwaD5HZrorfHyAwb0AEY6VYlctLf9MXYk4/exec"; 
 
         const { useState, useEffect } = React;
@@ -150,12 +151,12 @@
             localStorage.setItem('fieldpulse_name', formData.seName);
 
             try {
-              // Send data to Google Sheet
+              // *** FIXED: Using text/plain to avoid CORS preflight issues ***
               await fetch(SCRIPT_URL, {
                 method: 'POST',
-                mode: 'no-cors', // Important for Google Apps Script
+                mode: 'no-cors', 
                 headers: {
-                  'Content-Type': 'application/json',
+                  'Content-Type': 'text/plain;charset=utf-8', 
                 },
                 body: JSON.stringify(formData)
               });
