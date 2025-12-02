@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FieldPulse Tracker</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-900">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // *** CONFIGURATION ***
+        // PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE
+        const SCRIPT_URL = "https://script.google.com/a/macros/github.com/s/AKfycby8dfirR8P1ptXvXELbrv6Ygum3J5kE5lGwaD5HZrorfHyAwb0AEY6VYlctLf9MXYk4/exec"; 
+
+        const { useState, useEffect } = React;
+        const { Activity, BarChart3, CheckCircle, ChevronRight, DollarSign, FileText, HelpCircle, MessageSquare, Plus, Users, Zap, X } = lucide;
+
+        // --- Constants ---
+        const VALUE_PLAYS = [
+          "Accelerate Velocity and Quality",
+          "Automate Simple Tasks",
+          "Improve Quality and Maintainability",
+          "Scale Institutional Knowledge",
+          "Burn Down Technical Debt"
+        ];
+
+        const PLAY_DEFINITIONS = {
+          "Accelerate Velocity and Quality": "Focuses on PR velocity, removing code review bottlenecks, and using Rulesets/Instructions to speed up merging.",
+          "Automate Simple Tasks": "Focuses on clearing backlogs, removing 'toil' or 'grunt work', scripting, and boilerplates.",
+          "Improve Quality and Maintainability": "Focuses on adding unit tests, fixing brittle code, reducing production defects, and reliability.",
+          "Scale Institutional Knowledge": "Focuses on onboarding new hires, fixing stale documentation, and reducing silos using Copilot Spaces.",
+          "Burn Down Technical Debt": "Focuses on major migrations (e.g., Java upgrades), massive refactoring projects, and modernization."
+        };
+
+        const STAGES = [
+          "Discovery / Initial Convo",
+          "Pilot Proposed",
+          "Pilot Active",
+          "Business Case / Value Proof",
+          "Closed / Won"
+        ];
+
+        const ROLES = [
+          "Solution Engineer (SE)",
+          "Business Lead",
+          "Sales Rep",
+          "Manager"
+        ];
+
+        // --- Components ---
+
+        const MetricCard = ({ title, value, icon: Icon, colorClass }) => (
+          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+            <div className={`p-3 rounded-full ${colorClass}`}>
+               <i data-lucide={Icon} className="text-white w-6 h-6"></i>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-500">{title}</p>
+              <h3 className="text-2xl font-bold text-slate-800">{value}</h3>
+            </div>
+          </div>
+        );
+
+        const PlayCheatSheet = ({ onClose, onSelect }) => (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white">
+                <h3 className="text-xl font-bold text-slate-800 flex items-center">
+                  <span className="mr-2 text-amber-500">⚡</span>
+                  Identify the Value Play
+                </h3>
+                <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                  <span className="text-slate-500 font-bold">✕</span>
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                {Object.entries(PLAY_DEFINITIONS).map(([play, desc]) => (
+                  <div 
+                    key={play} 
+                    className="p-4 border border-slate-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 cursor-pointer transition-all group"
+                    onClick={() => { onSelect(play); onClose(); }}
+                  >
+                    <h4 className="font-bold text-slate-800 group-hover:text-blue-700">{play}</h4>
+                    <p className="text-sm text-slate-600 mt-1">{desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+
+        const FeedbackForm = ({ onSuccess }) => {
+          const [loading, setLoading] = useState(false);
+          const [showCheatSheet, setShowCheatSheet] = useState(false);
+          const [formData, setFormData] = useState({
+            seName: localStorage.getItem('fieldpulse_name') || '',
+            role: 'Solution Engineer (SE)',
+            customerName: '',
+            valuePlay: '',
+            stage: '',
+            revenueImpact: false,
+            revenueDetails: '',
+            isRetrospective: false,
+            notes: ''
+          });
+
+          const handleChange = (e) => {
+            const { name, value, type, checked } = e.target;
+            setFormData(prev => ({
+              ...prev,
+              [name]: type === 'checkbox' ? checked : value
+            }));
+          };
+
+          const handlePlaySelect = (play) => {
+            setFormData(prev => ({ ...prev, valuePlay: play }));
+          };
+
+          const handleSubmit = async (e) => {
+            e.preventDefault();
+            if (!formData.valuePlay || !formData.customerName) {
+              alert("Please fill in at least the Customer Name and Value Play.");
+              return;
+            }
+            if (SCRIPT_URL.includes("REPLACE_THIS")) {
+                alert("Please configure the Google Script URL in the code!");
+                return;
+            }
+
+            setLoading(true);
+            
+            // Save name for next time
+            localStorage.setItem('fieldpulse_name', formData.seName);
+
+            try {
+              // Send data to Google Sheet
+              await fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors', // Important for Google Apps Script
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+              });
+              
+              setFormData({
+                seName: formData.seName, 
+                role: formData.role,
+                customerName: '',
+                valuePlay: '',
+                stage: '',
+                revenueImpact: false,
+                revenueDetails: '',
+                isRetrospective: false,
+                notes: ''
+              });
+              onSuccess();
+            } catch (error) {
+              console.error("Error submitting feedback:", error);
+              alert("Failed to submit. Check internet connection.");
+            } finally {
+              setLoading(false);
+            }
+          };
+
+          return (
+            <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative">
+              {showCheatSheet && (
+                <PlayCheatSheet onClose={() => setShowCheatSheet(false)} onSelect={handlePlaySelect} />
+              )}
+              
+              <div className="bg-slate-50 border-b border-slate-100 p-6">
+                <h2 className="text-lg font-bold text-slate-800 flex items-center">
+                  Log Customer Engagement
+                </h2>
+                <p className="text-slate-500 text-sm mt-1">
+                  Capture conversations around Copilot Value Plays to track field impact.
+                </p>
+              </div>
+
+              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                {/* Identity Section */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Your Name</label>
+                    <input
+                      type="text"
+                      name="seName"
+                      value={formData.seName}
+                      onChange={handleChange}
+                      placeholder="e.g. Jane Doe"
+                      className="w-full rounded-lg border-slate-300 border p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
+                    <select
+                      name="role"
+                      value={formData.role}
+                      onChange={handleChange}
+                      className="w-full rounded-lg border-slate-300 border p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    >
+                      {ROLES.map(role => <option key={role} value={role}>{role}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Customer Section */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Customer / Account Name</label>
+                  <input
+                    type="text"
+                    name="customerName"
+                    value={formData.customerName}
+                    onChange={handleChange}
+                    placeholder="e.g. Acme Corp"
+                    className="w-full rounded-lg border-slate-300 border p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    required
+                  />
+                </div>
+
+                {/* Value Play Selection */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-sm font-medium text-slate-700">Value Play Discussed</label>
+                      <button 
+                        type="button" 
+                        onClick={() => setShowCheatSheet(true)}
+                        className="text-xs text-blue-600 hover:text-blue-800 flex items-center font-medium"
+                      >
+                         Help me decide
+                      </button>
+                    </div>
+                    <select
+                      name="valuePlay"
+                      value={formData.valuePlay}
+                      onChange={handleChange}
+                      className="w-full rounded-lg border-slate-300 border p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                      required
+                    >
+                      <option value="">Select a Value Play...</option>
+                      {VALUE_PLAYS.map(play => <option key={play} value={play}>{play}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Engagement Stage</label>
+                    <select
+                      name="stage"
+                      value={formData.stage}
+                      onChange={handleChange}
+                      className="w-full rounded-lg border-slate-300 border p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                      required
+                    >
+                      <option value="">Select Stage...</option>
+                      {STAGES.map(stage => <option key={stage} value={stage}>{stage}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Blindspot Check */}
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                  <label className="flex items-start space-x-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="isRetrospective"
+                      checked={formData.isRetrospective}
+                      onChange={handleChange}
+                      className="mt-1 h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                    />
+                    <div className="text-sm">
+                      <span className="font-medium text-blue-900">Was this a "Blindspot" conversation?</span>
+                      <p className="text-blue-700 text-xs mt-1">
+                        Check this if you realized you were <em>already</em> having this conversation naturally, rather than proactively pitching it.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Revenue Impact */}
+                <div className="space-y-3">
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="revenueImpact"
+                      checked={formData.revenueImpact}
+                      onChange={handleChange}
+                      className="h-4 w-4 text-green-600 rounded border-gray-300 focus:ring-green-500"
+                    />
+                    <span className="text-sm font-medium text-slate-700">Did this contribute directly to revenue/deal velocity?</span>
+                  </label>
+                  
+                  {formData.revenueImpact && (
+                    <textarea
+                      name="revenueDetails"
+                      value={formData.revenueDetails}
+                      onChange={handleChange}
+                      placeholder="Briefly describe the impact (e.g., Unlocked 500 seats, accelerated deal by 2 weeks)..."
+                      className="w-full rounded-lg border-slate-300 border p-2 text-sm focus:ring-2 focus:ring-green-500 outline-none h-20"
+                    />
+                  )}
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Notes / Feedback / Customer Reaction</label>
+                  <textarea
+                    name="notes"
+                    value={formData.notes}
+                    onChange={handleChange}
+                    placeholder="What resonated? What objections did they have? Any wins?"
+                    className="w-full rounded-lg border-slate-300 border p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none h-24"
+                  />
+                </div>
+
+                <div className="pt-4">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className={`w-full py-3 px-4 rounded-lg text-white font-medium flex items-center justify-center space-x-2 ${
+                      loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                    }`}
+                  >
+                    {loading ? <span>Saving...</span> : <span>Submit Log</span>}
+                  </button>
+                </div>
+              </form>
+            </div>
+          );
+        };
+
+        const Dashboard = ({ data, loading }) => {
+          if (loading) return <div className="text-center py-20 text-slate-400">Loading data from Sheets...</div>;
+          
+          const totalLogs = data.length;
+          const uniqueCustomers = new Set(data.map(d => d.customerName)).size;
+          const revenueImpacts = data.filter(d => d.revenueImpact).length;
+          
+          const playCounts = VALUE_PLAYS.map(play => ({
+            name: play,
+            count: data.filter(d => d.valuePlay === play).length
+          })).sort((a, b) => b.count - a.count);
+
+          const topPlay = playCounts[0]?.count > 0 ? playCounts[0].name : "N/A";
+
+          return (
+            <div className="space-y-8 animate-in fade-in duration-500">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <MetricCard title="Total Engagements" value={totalLogs} icon="Activity" colorClass="bg-blue-500" />
+                <MetricCard title="Unique Customers" value={uniqueCustomers} icon="Users" colorClass="bg-indigo-500" />
+                <MetricCard title="Revenue Linked" value={revenueImpacts} icon="DollarSign" colorClass="bg-green-500" />
+                <MetricCard title="Top Value Play" value={topPlay === "N/A" ? "No Data" : "Top Play"} icon="Zap" colorClass="bg-amber-500" />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                  <h3 className="text-lg font-bold text-slate-800 mb-6">Engagement by Value Play</h3>
+                  <div className="space-y-4">
+                    {playCounts.map((item) => (
+                      <div key={item.name}>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="font-medium text-slate-700">{item.name}</span>
+                          <span className="text-slate-500">{item.count}</span>
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-2.5">
+                          <div 
+                            className="bg-blue-600 h-2.5 rounded-full transition-all duration-500" 
+                            style={{ width: `${totalLogs > 0 ? (item.count / totalLogs) * 100 : 0}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col max-h-[500px]">
+                  <h3 className="text-lg font-bold text-slate-800 mb-4">Recent Logs</h3>
+                  <div className="overflow-y-auto space-y-4 pr-2">
+                    {data.length === 0 ? (
+                      <p className="text-slate-400 text-sm text-center py-8">No data recorded yet.</p>
+                    ) : (
+                      data.map((log, i) => (
+                        <div key={i} className="p-3 bg-slate-50 rounded-lg border border-slate-100 text-sm">
+                          <div className="flex justify-between items-start mb-1">
+                            <span className="font-bold text-slate-800">{log.customerName}</span>
+                            <span className="text-xs text-slate-400">
+                                {new Date(log.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div className="text-blue-600 font-medium text-xs mb-1">{log.valuePlay}</div>
+                          <div className="text-slate-600 text-xs line-clamp-2">{log.notes || "No notes provided."}</div>
+                          <div className="mt-2 flex items-center justify-between">
+                            <span className="text-xs bg-white border border-slate-200 px-2 py-0.5 rounded text-slate-500">
+                              {log.seName}
+                            </span>
+                            {log.revenueImpact && (
+                              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded flex items-center">
+                                 Impact
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        const App = () => {
+          const [view, setView] = useState('form');
+          const [data, setData] = useState([]);
+          const [loadingData, setLoadingData] = useState(false);
+
+          useEffect(() => {
+            // Re-render icons when components mount/update
+            lucide.createIcons();
+          });
+
+          useEffect(() => {
+            if (view === 'dashboard' && SCRIPT_URL && !SCRIPT_URL.includes("REPLACE_THIS")) {
+                setLoadingData(true);
+                fetch(SCRIPT_URL)
+                  .then(res => res.json())
+                  .then(json => {
+                      setData(json);
+                      setLoadingData(false);
+                  })
+                  .catch(err => {
+                      console.error("Failed to load dashboard data", err);
+                      setLoadingData(false);
+                  });
+            }
+          }, [view]);
+
+          return (
+            <div className="min-h-screen bg-slate-100 font-sans text-slate-900 pb-20">
+              <header className="bg-slate-900 text-white shadow-lg sticky top-0 z-50">
+                <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="bg-blue-600 p-1.5 rounded-lg">
+                      <i data-lucide="check-circle" className="text-white w-5 h-5"></i>
+                    </div>
+                    <span className="font-bold text-lg tracking-tight">Field<span className="text-blue-400">Pulse</span></span>
+                  </div>
+                  
+                  <div className="flex bg-slate-800 rounded-lg p-1">
+                    <button
+                      onClick={() => setView('form')}
+                      className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                        view === 'form' 
+                          ? 'bg-blue-600 text-white shadow-sm' 
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      Log Entry
+                    </button>
+                    <button
+                      onClick={() => setView('dashboard')}
+                      className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                        view === 'dashboard' 
+                          ? 'bg-blue-600 text-white shadow-sm' 
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      Dashboard
+                    </button>
+                  </div>
+                </div>
+              </header>
+
+              <main className="max-w-6xl mx-auto px-4 py-8">
+                {view === 'form' ? (
+                  <div className="animate-in slide-in-from-bottom-4 duration-500">
+                     <div className="text-center mb-8">
+                      <h1 className="text-3xl font-bold text-slate-800">Field Feedback Tracker</h1>
+                      <p className="text-slate-500 mt-2 max-w-xl mx-auto">
+                        Help us map our success with Copilot Value Plays. Log your customer conversations to help identify what's working and where we're driving revenue.
+                      </p>
+                     </div>
+                     <FeedbackForm onSuccess={() => alert("Feedback logged successfully to Google Sheets!")} />
+                  </div>
+                ) : (
+                  <div className="animate-in slide-in-from-bottom-4 duration-500">
+                     <div className="flex justify-between items-end mb-6">
+                        <div>
+                          <h1 className="text-2xl font-bold text-slate-800">Engagement Overview</h1>
+                          <p className="text-slate-500">Consolidated view of all Field feedback.</p>
+                        </div>
+                     </div>
+                     <Dashboard data={data} loading={loadingData} />
+                  </div>
+                )}
+              </main>
+            </div>
+          );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
