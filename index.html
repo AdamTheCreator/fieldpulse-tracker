@@ -27,7 +27,6 @@
 
     <script type="text/babel">
         // *** CONFIGURATION ***
-        // PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE
         const SCRIPT_URL = "https://script.google.com/a/macros/github.com/s/AKfycby8dfirR8P1ptXvXELbrv6Ygum3J5kE5lGwaD5HZrorfHyAwb0AEY6VYlctLf9MXYk4/exec"; 
 
         const { useState, useEffect } = React;
@@ -52,8 +51,8 @@
 
         const STAGES = [
           "Discovery / Initial Convo",
-          "Pilot Proposed",
-          "Pilot Active",
+          "PoC Proposed",
+          "PoC Active",
           "Business Case / Value Proof",
           "Closed / Won"
         ];
@@ -275,25 +274,6 @@
                       {STAGES.map(stage => <option key={stage} value={stage}>{stage}</option>)}
                     </select>
                   </div>
-                </div>
-
-                {/* Blindspot Check */}
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                  <label className="flex items-start space-x-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="isRetrospective"
-                      checked={formData.isRetrospective}
-                      onChange={handleChange}
-                      className="mt-1 h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                    />
-                    <div className="text-sm">
-                      <span className="font-medium text-blue-900">Was this a "Blindspot" conversation?</span>
-                      <p className="text-blue-700 text-xs mt-1">
-                        Check this if you realized you were <em>already</em> having this conversation naturally, rather than proactively pitching it.
-                      </p>
-                    </div>
-                  </label>
                 </div>
 
                 {/* Revenue Impact */}
